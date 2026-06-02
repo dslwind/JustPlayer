@@ -21,6 +21,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
@@ -116,6 +117,19 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
         recyclerView = findViewById(R.id.recycler_videos);
         emptyView = findViewById(R.id.empty_view);
+
+        // Handle back press: folder list → do nothing (let system handle), videos → go to folders
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (currentMode == MODE_VIDEOS) {
+                    showFolderList();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
 
         // Setup both adapters
         videoAdapter = new MediaLibraryAdapter(this);
@@ -268,6 +282,12 @@ public class MediaLibraryActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
+        // Tint back arrow white
+        Drawable navIcon = toolbar.getNavigationIcon();
+        if (navIcon != null) {
+            navIcon.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_ATOP);
+        }
+
         showVideoList();
     }
 
@@ -311,15 +331,14 @@ public class MediaLibraryActivity extends AppCompatActivity {
             if (showHidden) subtitle += " (incl. hidden)";
             getSupportActionBar().setSubtitle(subtitle);
         }
-    }
 
-    @Override
-    public void onBackPressed() {
-        if (currentMode == MODE_VIDEOS) {
-            showFolderList();
-        } else {
-            super.onBackPressed();
-        }
+        // Tint back arrow white (must be done after layout)
+        toolbar.post(() -> {
+            Drawable navIcon = toolbar.getNavigationIcon();
+            if (navIcon != null) {
+                navIcon.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_ATOP);
+            }
+        });
     }
 
     @Override
