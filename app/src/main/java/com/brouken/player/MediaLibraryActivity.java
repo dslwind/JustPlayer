@@ -1,7 +1,6 @@
 package com.brouken.player;
 
 import android.Manifest;
-import android.app.Activity;
 import android.content.ContentUris;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -14,9 +13,6 @@ import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -25,7 +21,9 @@ import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -34,7 +32,6 @@ import com.google.android.material.chip.ChipGroup;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,14 +46,16 @@ public class MediaLibraryActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private ChipGroup chipGroup;
     private View folderFilterBar;
+    private View appBarLayout;
 
     private List<VideoItem> allVideos = new ArrayList<>();
     private List<VideoItem> filteredVideos = new ArrayList<>();
     private Map<String, List<VideoItem>> folderMap = new LinkedHashMap<>();
 
-    private String currentFolder = null; // null = all videos
+    private String currentFolder = null;
     private String currentQuery = "";
     private SortOrder sortOrder = SortOrder.DATE_DESC;
+    private boolean loaded = false;
 
     enum SortOrder {
         DATE_DESC("Date (newest)", MediaStore.MediaColumns.DATE_ADDED + " DESC"),
@@ -80,13 +79,25 @@ public class MediaLibraryActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Enable edge-to-edge display
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
         setContentView(R.layout.activity_media_library);
 
         toolbar = findViewById(R.id.toolbar);
+        appBarLayout = findViewById(R.id.app_bar_layout);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(R.string.app_name);
         }
+
+        // Handle system window insets for status bar
+        ViewCompat.setOnApplyWindowInsetsListener(appBarLayout, (v, insets) -> {
+            int statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            v.setPadding(0, statusBarHeight, 0, 0);
+            return insets;
+        });
 
         recyclerView = findViewById(R.id.recycler_videos);
         emptyView = findViewById(R.id.empty_view);
@@ -96,6 +107,13 @@ public class MediaLibraryActivity extends AppCompatActivity {
         adapter = new MediaLibraryAdapter(this);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
+
+        // Handle navigation bar insets for bottom padding
+        ViewCompat.setOnApplyWindowInsetsListener(recyclerView, (v, insets) -> {
+            int navBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+            v.setPadding(0, 0, 0, navBarHeight);
+            return insets;
+        });
 
         adapter.setOnItemClickListener(new MediaLibraryAdapter.OnItemClickListener() {
             @Override
@@ -208,6 +226,12 @@ public class MediaLibraryActivity extends AppCompatActivity {
             }
         }
 
+        loaded = true;
+
+        // Show folder chips by default
+        setupFolderChips();
+        folderFilterBar.setVisibility(View.VISIBLE);
+
         applyFilter();
     }
 
@@ -265,10 +289,9 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
         Intent intent = new Intent(this, PlayerActivity.class);
         intent.setAction(Intent.ACTION_VIEW);
-        intent.setData(videoUri);
-        if (item.mimeType != null) {
-            intent.setType(item.mimeType);
-        }
+        // Must use setDataAndType - setData+setType overwrite each other
+        intent.setDataAndType(videoUri, item.mimeType != null ? item.mimeType : "video/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
     }
 
@@ -420,8 +443,8 @@ public class MediaLibraryActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Refresh in case videos were added/removed
-        if (ContextCompat.checkSelfPermission(this,
+        // Only reload if we haven't loaded yet (first time)
+        if (!loaded && ContextCompat.checkSelfPermission(this,
                 Build.VERSION.SDK_INT >= 33 ? Manifest.permission.READ_MEDIA_VIDEO :
                         Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             loadVideos();
