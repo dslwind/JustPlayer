@@ -1,6 +1,7 @@
 package com.brouken.player;
 
 import android.content.Context;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +15,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,8 +70,16 @@ public class MediaLibraryAdapter extends RecyclerView.Adapter<MediaLibraryAdapte
             holder.durationBadge.setVisibility(View.GONE);
         }
 
+        // Load thumbnail: content URI for MediaStore, File for hidden files
+        Object thumbnailSource;
+        if (item.id > 0) {
+            thumbnailSource = item.getThumbnailUri();
+        } else {
+            thumbnailSource = new File(item.path);
+        }
+
         Glide.with(context)
-                .load(item.getThumbnailUri())
+                .load(thumbnailSource)
                 .transform(new CenterCrop(), new RoundedCorners(dpToPx(8)))
                 .placeholder(R.drawable.ic_video_placeholder)
                 .into(holder.thumbnail);

@@ -5,6 +5,9 @@ import android.content.ContentUris;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
@@ -29,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -96,6 +100,12 @@ public class MediaLibraryActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(R.string.app_name);
+        }
+
+        // Tint overflow menu icon white for dark theme
+        Drawable overflowIcon = toolbar.getOverflowIcon();
+        if (overflowIcon != null) {
+            overflowIcon.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_ATOP);
         }
 
         recyclerView = findViewById(R.id.recycler_videos);
@@ -467,7 +477,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
             info.append("\n⚠ Hidden file (in .nomedia folder)");
         }
 
-        new android.app.AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(item.title)
                 .setMessage(info.toString())
                 .setPositiveButton(android.R.string.ok, null)
@@ -528,7 +538,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
                 loadVideos();
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 // Need to request MANAGE_EXTERNAL_STORAGE
-                new android.app.AlertDialog.Builder(this)
+                new MaterialAlertDialogBuilder(this)
                         .setTitle("Storage access required")
                         .setMessage("To scan hidden videos (.nomedia folders), the app needs full storage access. Grant in next screen.")
                         .setPositiveButton(android.R.string.ok, (d, w) -> requestStorageManagerPermission())
@@ -551,7 +561,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
             if (orders[i] == sortOrder) checked = i;
         }
 
-        new android.app.AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("Sort by")
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     sortOrder = orders[which];
