@@ -21,9 +21,6 @@ import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -46,7 +43,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private ChipGroup chipGroup;
     private View folderFilterBar;
-    private View appBarLayout;
 
     private List<VideoItem> allVideos = new ArrayList<>();
     private List<VideoItem> filteredVideos = new ArrayList<>();
@@ -79,25 +75,13 @@ public class MediaLibraryActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // Enable edge-to-edge display
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-
         setContentView(R.layout.activity_media_library);
 
         toolbar = findViewById(R.id.toolbar);
-        appBarLayout = findViewById(R.id.app_bar_layout);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(R.string.app_name);
         }
-
-        // Handle system window insets for status bar
-        ViewCompat.setOnApplyWindowInsetsListener(appBarLayout, (v, insets) -> {
-            int statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-            v.setPadding(0, statusBarHeight, 0, 0);
-            return insets;
-        });
 
         recyclerView = findViewById(R.id.recycler_videos);
         emptyView = findViewById(R.id.empty_view);
@@ -107,13 +91,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
         adapter = new MediaLibraryAdapter(this);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
-
-        // Handle navigation bar insets for bottom padding
-        ViewCompat.setOnApplyWindowInsetsListener(recyclerView, (v, insets) -> {
-            int navBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-            v.setPadding(0, 0, 0, navBarHeight);
-            return insets;
-        });
 
         adapter.setOnItemClickListener(new MediaLibraryAdapter.OnItemClickListener() {
             @Override
@@ -289,7 +266,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
         Intent intent = new Intent(this, PlayerActivity.class);
         intent.setAction(Intent.ACTION_VIEW);
-        // Must use setDataAndType - setData+setType overwrite each other
         intent.setDataAndType(videoUri, item.mimeType != null ? item.mimeType : "video/*");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
@@ -443,7 +419,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Only reload if we haven't loaded yet (first time)
         if (!loaded && ContextCompat.checkSelfPermission(this,
                 Build.VERSION.SDK_INT >= 33 ? Manifest.permission.READ_MEDIA_VIDEO :
                         Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
