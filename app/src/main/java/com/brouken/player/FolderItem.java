@@ -1,5 +1,7 @@
 package com.brouken.player;
 
+import android.content.Context;
+
 import java.util.List;
 
 public class FolderItem {
@@ -23,7 +25,7 @@ public class FolderItem {
         return total;
     }
 
-    public String getCountText() {
+    public String getCountText(Context context) {
         int count = getCount();
         long size = getTotalSize();
         String sizeText;
@@ -32,6 +34,6 @@ public class FolderItem {
         } else {
             sizeText = String.format("%.2f GB", size / (1024.0 * 1024 * 1024));
         }
-        return count + " videos · " + sizeText;
+        return context.getString(R.string.media_library_folder_count, count, sizeText);
     }
 }

@@ -4,19 +4,19 @@
 
     <item
         android:id="@+id/action_search"
-        android:title="Search"
+        android:title="@string/media_library_search_hint"
         android:icon="@android:drawable/ic_menu_search"
         app:showAsAction="always|collapseActionView"
         app:actionViewClass="androidx.appcompat.widget.SearchView" />
 
     <item
         android:id="@+id/action_show_hidden"
-        android:title="Show hidden"
+        android:title="@string/media_library_show_hidden"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/action_sort"
-        android:title="Sort"
+        android:title="@string/media_library_sort_title"
         android:icon="@drawable/ic_sort_24dp"
         app:showAsAction="ifRoom" />
 

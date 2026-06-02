@@ -58,4 +58,38 @@
     <string name="pref_subtitle_style_bold">Bold style</string>
     <string name="pref_subtitle_style_bold_on">Use bold typeface as regular</string>
     <string name="pref_subtitle_style_bold_off">Use default regular typeface</string>
+
+    <!-- Media Library -->
+    <string name="media_library_title" translatable="false">Just Player</string>
+    <string name="media_library_no_videos">No videos found</string>
+    <string name="media_library_no_matching_folders">No matching folders</string>
+    <string name="media_library_no_matching_videos">No matching videos</string>
+    <string name="media_library_no_videos_in_folder">No videos in this folder</string>
+    <string name="media_library_search_hint">Search videos…</string>
+    <string name="media_library_show_hidden">Show hidden</string>
+    <string name="media_library_hide_hidden">Hide hidden</string>
+    <string name="media_library_storage_access_title">Storage access required</string>
+    <string name="media_library_storage_access_message">To scan hidden videos (.nomedia folders), the app needs full storage access. Grant in next screen.</string>
+    <string name="media_library_permission_denied">Permission denied. Cannot show media library.</string>
+    <string name="media_library_sort_title">Sort by</string>
+    <string name="media_library_sort_date_desc">Date (newest)</string>
+    <string name="media_library_sort_date_asc">Date (oldest)</string>
+    <string name="media_library_sort_name_asc">Name (A–Z)</string>
+    <string name="media_library_sort_name_desc">Name (Z–A)</string>
+    <string name="media_library_sort_size_desc">Size (largest)</string>
+    <string name="media_library_sort_size_asc">Size (smallest)</string>
+    <string name="media_library_sort_duration_desc">Duration (longest)</string>
+    <string name="media_library_sort_duration_asc">Duration (shortest)</string>
+    <string name="media_library_subtitle_videos">%d videos</string>
+    <string name="media_library_subtitle_folders">%d folders · %d videos</string>
+    <string name="media_library_subtitle_hidden"> (incl. hidden)</string>
+    <string name="media_library_folder_count">%d videos · %s</string>
+    <string name="media_library_hidden_warning">\n⚠ Hidden file (in .nomedia folder)</string>
+    <string name="media_library_video_info_title">Title: %s</string>
+    <string name="media_library_video_info_duration">Duration: %s</string>
+    <string name="media_library_video_info_size">Size: %s</string>
+    <string name="media_library_video_info_resolution">Resolution: %s</string>
+    <string name="media_library_video_info_folder">Folder: %s</string>
+    <string name="media_library_video_info_type">Type: %s</string>
+    <string name="media_library_video_info_path">Path: %s</string>
 </resources>

@@ -48,7 +48,7 @@ public class FolderAdapter extends RecyclerView.Adapter<FolderAdapter.FolderView
         FolderItem item = items.get(position);
 
         holder.name.setText(item.name);
-        holder.count.setText(item.getCountText());
+        holder.count.setText(item.getCountText(context));
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onFolderClick(item);

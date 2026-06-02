@@ -36,7 +36,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,7 +64,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
     private Map<String, List<VideoItem>> folderMap = new LinkedHashMap<>();
     private List<FolderItem> folderList = new ArrayList<>();
 
-    private String currentFolder = null; // null = show folder list
+    private String currentFolder = null;
     private String currentQuery = "";
     private SortOrder sortOrder = SortOrder.DATE_DESC;
     private boolean loaded = false;
@@ -73,26 +72,25 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
     private MenuItem hiddenToggle;
 
-    // View mode
     private static final int MODE_FOLDERS = 0;
     private static final int MODE_VIDEOS = 1;
     private int currentMode = MODE_FOLDERS;
 
     enum SortOrder {
-        DATE_DESC("Date (newest)", MediaStore.MediaColumns.DATE_ADDED + " DESC"),
-        DATE_ASC("Date (oldest)", MediaStore.MediaColumns.DATE_ADDED + " ASC"),
-        NAME_ASC("Name (A-Z)", MediaStore.MediaColumns.DISPLAY_NAME + " ASC"),
-        NAME_DESC("Name (Z-A)", MediaStore.MediaColumns.DISPLAY_NAME + " DESC"),
-        SIZE_DESC("Size (largest)", MediaStore.MediaColumns.SIZE + " DESC"),
-        SIZE_ASC("Size (smallest)", MediaStore.MediaColumns.SIZE + " ASC"),
-        DURATION_DESC("Duration (longest)", MediaStore.MediaColumns.DURATION + " DESC"),
-        DURATION_ASC("Duration (shortest)", MediaStore.MediaColumns.DURATION + " ASC");
+        DATE_DESC(R.string.media_library_sort_date_desc, MediaStore.MediaColumns.DATE_ADDED + " DESC"),
+        DATE_ASC(R.string.media_library_sort_date_asc, MediaStore.MediaColumns.DATE_ADDED + " ASC"),
+        NAME_ASC(R.string.media_library_sort_name_asc, MediaStore.MediaColumns.DISPLAY_NAME + " ASC"),
+        NAME_DESC(R.string.media_library_sort_name_desc, MediaStore.MediaColumns.DISPLAY_NAME + " DESC"),
+        SIZE_DESC(R.string.media_library_sort_size_desc, MediaStore.MediaColumns.SIZE + " DESC"),
+        SIZE_ASC(R.string.media_library_sort_size_asc, MediaStore.MediaColumns.SIZE + " ASC"),
+        DURATION_DESC(R.string.media_library_sort_duration_desc, MediaStore.MediaColumns.DURATION + " DESC"),
+        DURATION_ASC(R.string.media_library_sort_duration_asc, MediaStore.MediaColumns.DURATION + " ASC");
 
-        final String label;
+        final int labelRes;
         final String sortOrder;
 
-        SortOrder(String label, String sortOrder) {
-            this.label = label;
+        SortOrder(int labelRes, String sortOrder) {
+            this.labelRes = labelRes;
             this.sortOrder = sortOrder;
         }
     }
@@ -109,7 +107,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(false);
         }
 
-        // Tint overflow menu icon white for dark theme
         Drawable overflowIcon = toolbar.getOverflowIcon();
         if (overflowIcon != null) {
             overflowIcon.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_ATOP);
@@ -118,7 +115,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recycler_videos);
         emptyView = findViewById(R.id.empty_view);
 
-        // Handle back press: folder list → do nothing (let system handle), videos → go to folders
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -131,7 +127,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
             }
         });
 
-        // Setup both adapters
         videoAdapter = new MediaLibraryAdapter(this);
         videoAdapter.setOnItemClickListener(new MediaLibraryAdapter.OnItemClickListener() {
             @Override
@@ -146,9 +141,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
         });
 
         folderAdapter = new FolderAdapter(this);
-        folderAdapter.setOnFolderClickListener(folder -> {
-            openFolder(folder.name);
-        });
+        folderAdapter.setOnFolderClickListener(folder -> openFolder(folder.name));
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
@@ -177,7 +170,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 loadVideos();
             } else {
-                emptyView.setText("Permission denied. Cannot show media library.");
+                emptyView.setText(R.string.media_library_permission_denied);
                 emptyView.setVisibility(View.VISIBLE);
             }
         }
@@ -205,7 +198,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
         }
 
         loaded = true;
-
         buildFolderList();
 
         if (currentMode == MODE_FOLDERS) {
@@ -215,7 +207,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
         }
 
         if (hiddenToggle != null) {
-            hiddenToggle.setTitle(showHidden ? "Hide hidden" : "Show hidden");
+            hiddenToggle.setTitle(showHidden ? R.string.media_library_hide_hidden : R.string.media_library_show_hidden);
         }
     }
 
@@ -233,11 +225,10 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(R.string.app_name);
-            getSupportActionBar().setSubtitle(folderList.size() + " folders · " + allVideos.size() + " videos");
+            getSupportActionBar().setSubtitle(getString(R.string.media_library_subtitle_folders, folderList.size(), allVideos.size()));
             getSupportActionBar().setDisplayHomeAsUpEnabled(false);
         }
 
-        // Apply search filter to folders
         List<FolderItem> displayFolders;
         if (TextUtils.isEmpty(currentQuery)) {
             displayFolders = folderList;
@@ -245,7 +236,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
             displayFolders = new ArrayList<>();
             String query = currentQuery.toLowerCase();
             for (FolderItem folder : folderList) {
-                // Check if folder name matches or any video title matches
                 boolean folderMatch = folder.name.toLowerCase().contains(query);
                 boolean videoMatch = false;
                 for (VideoItem v : folder.videos) {
@@ -264,7 +254,8 @@ public class MediaLibraryActivity extends AppCompatActivity {
         recyclerView.setAdapter(folderAdapter);
 
         if (displayFolders.isEmpty()) {
-            emptyView.setText(TextUtils.isEmpty(currentQuery) ? "No videos found" : "No matching folders");
+            emptyView.setText(TextUtils.isEmpty(currentQuery) ?
+                    R.string.media_library_no_videos : R.string.media_library_no_matching_folders);
             emptyView.setVisibility(View.VISIBLE);
             recyclerView.setVisibility(View.GONE);
         } else {
@@ -282,7 +273,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
-        // Tint back arrow white
         Drawable navIcon = toolbar.getNavigationIcon();
         if (navIcon != null) {
             navIcon.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_ATOP);
@@ -318,7 +308,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
         if (filteredVideos.isEmpty()) {
             emptyView.setText(TextUtils.isEmpty(currentQuery) ?
-                    "No videos in this folder" : "No matching videos");
+                    R.string.media_library_no_videos_in_folder : R.string.media_library_no_matching_videos);
             emptyView.setVisibility(View.VISIBLE);
             recyclerView.setVisibility(View.GONE);
         } else {
@@ -327,12 +317,11 @@ public class MediaLibraryActivity extends AppCompatActivity {
         }
 
         if (getSupportActionBar() != null) {
-            String subtitle = filteredVideos.size() + " videos";
-            if (showHidden) subtitle += " (incl. hidden)";
+            String subtitle = getString(R.string.media_library_subtitle_videos, filteredVideos.size());
+            if (showHidden) subtitle += getString(R.string.media_library_subtitle_hidden);
             getSupportActionBar().setSubtitle(subtitle);
         }
 
-        // Tint back arrow white (must be done after layout)
         toolbar.post(() -> {
             Drawable navIcon = toolbar.getNavigationIcon();
             if (navIcon != null) {
@@ -341,16 +330,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    public boolean onSupportNavigateUp() {
-        if (currentMode == MODE_VIDEOS) {
-            showFolderList();
-            return true;
-        }
-        return super.onSupportNavigateUp();
-    }
-
-    // --- MediaStore loading ---
+    // --- MediaStore ---
 
     private void loadFromMediaStore() {
         Uri collection;
@@ -418,7 +398,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
         }
     }
 
-    // --- File system scanning for .nomedia ---
+    // --- File system scan ---
 
     private boolean canScanFileSystem() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -439,11 +419,8 @@ public class MediaLibraryActivity extends AppCompatActivity {
     private void scanFileSystem() {
         Set<String> existingPaths = new HashSet<>();
         for (VideoItem item : allVideos) {
-            if (item.path != null) {
-                existingPaths.add(item.path);
-            }
+            if (item.path != null) existingPaths.add(item.path);
         }
-
         File storageRoot = Environment.getExternalStorageDirectory();
         if (storageRoot != null && storageRoot.exists()) {
             scanDirectory(storageRoot, existingPaths);
@@ -452,7 +429,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
     private void scanDirectory(File dir, Set<String> existingPaths) {
         if (dir == null || !dir.exists() || !dir.isDirectory()) return;
-
         File[] files = dir.listFiles();
         if (files == null) return;
 
@@ -465,28 +441,21 @@ public class MediaLibraryActivity extends AppCompatActivity {
                 String path = file.getAbsolutePath();
                 if (!existingPaths.contains(path)) {
                     existingPaths.add(path);
-
                     VideoItem item = new VideoItem();
                     item.id = -1;
                     item.title = file.getName();
                     item.path = path;
                     item.size = file.length();
                     item.dateAdded = file.lastModified() / 1000;
-                    item.bucketName = file.getParentFile() != null ?
-                            file.getParentFile().getName() : "Unknown";
+                    item.bucketName = file.getParentFile() != null ? file.getParentFile().getName() : "Unknown";
                     item.mimeType = getMimeType(file.getName());
 
                     try (MediaMetadataRetriever retriever = new MediaMetadataRetriever()) {
                         retriever.setDataSource(path);
-                        String dur = retriever.extractMetadata(
-                                MediaMetadataRetriever.METADATA_KEY_DURATION);
-                        if (dur != null) {
-                            item.duration = Long.parseLong(dur);
-                        }
-                        String w = retriever.extractMetadata(
-                                MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
-                        String h = retriever.extractMetadata(
-                                MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
+                        String dur = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                        if (dur != null) item.duration = Long.parseLong(dur);
+                        String w = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
+                        String h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
                         if (w != null && h != null) {
                             item.width = Integer.parseInt(w);
                             item.height = Integer.parseInt(h);
@@ -498,7 +467,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
                     if (item.duration <= 0) continue;
 
                     allVideos.add(item);
-
                     List<VideoItem> folderList = folderMap.get(item.bucketName);
                     if (folderList == null) {
                         folderList = new ArrayList<>();
@@ -555,22 +523,22 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
     private void showVideoInfo(VideoItem item) {
         StringBuilder info = new StringBuilder();
-        info.append("Title: ").append(item.title).append("\n");
-        info.append("Duration: ").append(item.getFormattedDuration()).append("\n");
-        info.append("Size: ").append(item.getFormattedSize()).append("\n");
+        info.append(getString(R.string.media_library_video_info_title, item.title)).append("\n");
+        info.append(getString(R.string.media_library_video_info_duration, item.getFormattedDuration())).append("\n");
+        info.append(getString(R.string.media_library_video_info_size, item.getFormattedSize())).append("\n");
         String res = item.getResolution();
         if (res != null) {
-            info.append("Resolution: ").append(res).append("\n");
+            info.append(getString(R.string.media_library_video_info_resolution, res)).append("\n");
         }
-        info.append("Folder: ").append(item.bucketName).append("\n");
+        info.append(getString(R.string.media_library_video_info_folder, item.bucketName)).append("\n");
         if (item.mimeType != null) {
-            info.append("Type: ").append(item.mimeType).append("\n");
+            info.append(getString(R.string.media_library_video_info_type, item.mimeType)).append("\n");
         }
         if (item.path != null) {
-            info.append("Path: ").append(item.path);
+            info.append(getString(R.string.media_library_video_info_path, item.path));
         }
         if (item.id < 0) {
-            info.append("\n⚠ Hidden file (in .nomedia folder)");
+            info.append(getString(R.string.media_library_hidden_warning));
         }
 
         new MaterialAlertDialogBuilder(this)
@@ -590,21 +558,16 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
         MenuItem searchItem = menu.findItem(R.id.action_search);
         SearchView searchView = (SearchView) searchItem.getActionView();
-        searchView.setQueryHint("Search videos...");
+        searchView.setQueryHint(getString(R.string.media_library_search_hint));
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
-            public boolean onQueryTextSubmit(String query) {
-                return false;
-            }
+            public boolean onQueryTextSubmit(String query) { return false; }
 
             @Override
             public boolean onQueryTextChange(String newText) {
                 currentQuery = newText;
-                if (currentMode == MODE_FOLDERS) {
-                    showFolderList();
-                } else {
-                    showVideoList();
-                }
+                if (currentMode == MODE_FOLDERS) showFolderList();
+                else showVideoList();
                 return true;
             }
         });
@@ -640,8 +603,8 @@ public class MediaLibraryActivity extends AppCompatActivity {
                 loadVideos();
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 new MaterialAlertDialogBuilder(this)
-                        .setTitle("Storage access required")
-                        .setMessage("To scan hidden videos (.nomedia folders), the app needs full storage access. Grant in next screen.")
+                        .setTitle(R.string.media_library_storage_access_title)
+                        .setMessage(R.string.media_library_storage_access_message)
                         .setPositiveButton(android.R.string.ok, (d, w) -> requestStorageManagerPermission())
                         .setNegativeButton(android.R.string.cancel, null)
                         .show();
@@ -657,12 +620,12 @@ public class MediaLibraryActivity extends AppCompatActivity {
         String[] labels = new String[orders.length];
         int checked = 0;
         for (int i = 0; i < orders.length; i++) {
-            labels[i] = orders[i].label;
+            labels[i] = getString(orders[i].labelRes);
             if (orders[i] == sortOrder) checked = i;
         }
 
         new MaterialAlertDialogBuilder(this)
-                .setTitle("Sort by")
+                .setTitle(R.string.media_library_sort_title)
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     sortOrder = orders[which];
                     dialog.dismiss();

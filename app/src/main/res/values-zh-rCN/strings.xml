@@ -57,4 +57,37 @@
     <string name="pref_subtitle_header">字幕</string>
     <string name="pref_subtitle_style_bold">粗体式样</string>
     <string name="pref_subtitle_style_bold_on">使用粗体字体</string>
+
+    <!-- 媒体库 -->
+    <string name="media_library_no_videos">未找到视频</string>
+    <string name="media_library_no_matching_folders">没有匹配的文件夹</string>
+    <string name="media_library_no_matching_videos">没有匹配的视频</string>
+    <string name="media_library_no_videos_in_folder">此文件夹中没有视频</string>
+    <string name="media_library_search_hint">搜索视频…</string>
+    <string name="media_library_show_hidden">显示隐藏文件</string>
+    <string name="media_library_hide_hidden">隐藏隐藏文件</string>
+    <string name="media_library_storage_access_title">需要存储访问权限</string>
+    <string name="media_library_storage_access_message">要扫描隐藏视频（.nomedia 文件夹），应用需要完全存储访问权限。请在下一个界面授权。</string>
+    <string name="media_library_permission_denied">权限被拒绝，无法显示媒体库。</string>
+    <string name="media_library_sort_title">排序方式</string>
+    <string name="media_library_sort_date_desc">日期（最新）</string>
+    <string name="media_library_sort_date_asc">日期（最早）</string>
+    <string name="media_library_sort_name_asc">名称（A–Z）</string>
+    <string name="media_library_sort_name_desc">名称（Z–A）</string>
+    <string name="media_library_sort_size_desc">大小（最大）</string>
+    <string name="media_library_sort_size_asc">大小（最小）</string>
+    <string name="media_library_sort_duration_desc">时长（最长）</string>
+    <string name="media_library_sort_duration_asc">时长（最短）</string>
+    <string name="media_library_subtitle_videos">%d 个视频</string>
+    <string name="media_library_subtitle_folders">%d 个文件夹 · %d 个视频</string>
+    <string name="media_library_subtitle_hidden">（含隐藏）</string>
+    <string name="media_library_folder_count">%d 个视频 · %s</string>
+    <string name="media_library_hidden_warning">\n⚠ 隐藏文件（在 .nomedia 文件夹中）</string>
+    <string name="media_library_video_info_title">标题：%s</string>
+    <string name="media_library_video_info_duration">时长：%s</string>
+    <string name="media_library_video_info_size">大小：%s</string>
+    <string name="media_library_video_info_resolution">分辨率：%s</string>
+    <string name="media_library_video_info_folder">文件夹：%s</string>
+    <string name="media_library_video_info_type">类型：%s</string>
+    <string name="media_library_video_info_path">路径：%s</string>
 </resources>
