@@ -19,28 +19,6 @@
             app:titleTextColor="@color/white"
             app:subtitleTextColor="@color/media_library_text_secondary" />
 
-        <HorizontalScrollView
-            android:id="@+id/folder_filter_bar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:scrollbars="none"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="8dp">
-
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chip_group"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:singleSelection="true"
-                app:chipBackgroundColor="@color/media_library_chip_bg"
-                app:chipStrokeColor="@color/media_library_text_secondary"
-                app:chipStrokeWidth="1dp"
-                app:checkedIconTint="@color/media_library_chip_selected" />
-
-        </HorizontalScrollView>
-
     </com.google.android.material.appbar.AppBarLayout>
 
     <FrameLayout

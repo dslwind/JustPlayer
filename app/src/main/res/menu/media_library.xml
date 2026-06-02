@@ -15,12 +15,6 @@
         app:showAsAction="never" />
 
     <item
-        android:id="@+id/action_folders"
-        android:title="Folders"
-        android:icon="@drawable/ic_folder_open_24dp"
-        app:showAsAction="ifRoom" />
-
-    <item
         android:id="@+id/action_sort"
         android:title="Sort"
         android:icon="@drawable/ic_sort_24dp"

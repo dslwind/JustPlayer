@@ -30,13 +30,12 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.chip.Chip;
-import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,23 +53,29 @@ public class MediaLibraryActivity extends AppCompatActivity {
     };
 
     private RecyclerView recyclerView;
-    private MediaLibraryAdapter adapter;
     private TextView emptyView;
     private Toolbar toolbar;
-    private ChipGroup chipGroup;
-    private View folderFilterBar;
+
+    private MediaLibraryAdapter videoAdapter;
+    private FolderAdapter folderAdapter;
 
     private List<VideoItem> allVideos = new ArrayList<>();
     private List<VideoItem> filteredVideos = new ArrayList<>();
     private Map<String, List<VideoItem>> folderMap = new LinkedHashMap<>();
+    private List<FolderItem> folderList = new ArrayList<>();
 
-    private String currentFolder = null;
+    private String currentFolder = null; // null = show folder list
     private String currentQuery = "";
     private SortOrder sortOrder = SortOrder.DATE_DESC;
     private boolean loaded = false;
     private boolean showHidden = false;
 
     private MenuItem hiddenToggle;
+
+    // View mode
+    private static final int MODE_FOLDERS = 0;
+    private static final int MODE_VIDEOS = 1;
+    private int currentMode = MODE_FOLDERS;
 
     enum SortOrder {
         DATE_DESC("Date (newest)", MediaStore.MediaColumns.DATE_ADDED + " DESC"),
@@ -100,6 +105,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(R.string.app_name);
+            getSupportActionBar().setDisplayHomeAsUpEnabled(false);
         }
 
         // Tint overflow menu icon white for dark theme
@@ -110,14 +116,10 @@ public class MediaLibraryActivity extends AppCompatActivity {
 
         recyclerView = findViewById(R.id.recycler_videos);
         emptyView = findViewById(R.id.empty_view);
-        chipGroup = findViewById(R.id.chip_group);
-        folderFilterBar = findViewById(R.id.folder_filter_bar);
 
-        adapter = new MediaLibraryAdapter(this);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(adapter);
-
-        adapter.setOnItemClickListener(new MediaLibraryAdapter.OnItemClickListener() {
+        // Setup both adapters
+        videoAdapter = new MediaLibraryAdapter(this);
+        videoAdapter.setOnItemClickListener(new MediaLibraryAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(VideoItem item) {
                 playVideo(item);
@@ -128,6 +130,13 @@ public class MediaLibraryActivity extends AppCompatActivity {
                 showVideoInfo(item);
             }
         });
+
+        folderAdapter = new FolderAdapter(this);
+        folderAdapter.setOnFolderClickListener(folder -> {
+            openFolder(folder.name);
+        });
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         checkPermissionAndLoad();
     }
@@ -175,25 +184,154 @@ public class MediaLibraryActivity extends AppCompatActivity {
         allVideos.clear();
         folderMap.clear();
 
-        // 1. Load from MediaStore (respects .nomedia)
         loadFromMediaStore();
 
-        // 2. If showHidden enabled, also scan file system
         if (showHidden && canScanFileSystem()) {
             scanFileSystem();
         }
 
         loaded = true;
 
-        setupFolderChips();
-        folderFilterBar.setVisibility(View.VISIBLE);
+        buildFolderList();
 
-        applyFilter();
+        if (currentMode == MODE_FOLDERS) {
+            showFolderList();
+        } else {
+            showVideoList();
+        }
 
         if (hiddenToggle != null) {
             hiddenToggle.setTitle(showHidden ? "Hide hidden" : "Show hidden");
         }
     }
+
+    private void buildFolderList() {
+        folderList.clear();
+        for (Map.Entry<String, List<VideoItem>> entry : folderMap.entrySet()) {
+            folderList.add(new FolderItem(entry.getKey(), entry.getValue()));
+        }
+        Collections.sort(folderList, (a, b) -> a.name.compareToIgnoreCase(b.name));
+    }
+
+    private void showFolderList() {
+        currentMode = MODE_FOLDERS;
+        currentFolder = null;
+
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(R.string.app_name);
+            getSupportActionBar().setSubtitle(folderList.size() + " folders · " + allVideos.size() + " videos");
+            getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+        }
+
+        // Apply search filter to folders
+        List<FolderItem> displayFolders;
+        if (TextUtils.isEmpty(currentQuery)) {
+            displayFolders = folderList;
+        } else {
+            displayFolders = new ArrayList<>();
+            String query = currentQuery.toLowerCase();
+            for (FolderItem folder : folderList) {
+                // Check if folder name matches or any video title matches
+                boolean folderMatch = folder.name.toLowerCase().contains(query);
+                boolean videoMatch = false;
+                for (VideoItem v : folder.videos) {
+                    if (v.title != null && v.title.toLowerCase().contains(query)) {
+                        videoMatch = true;
+                        break;
+                    }
+                }
+                if (folderMatch || videoMatch) {
+                    displayFolders.add(folder);
+                }
+            }
+        }
+
+        folderAdapter.setItems(displayFolders);
+        recyclerView.setAdapter(folderAdapter);
+
+        if (displayFolders.isEmpty()) {
+            emptyView.setText(TextUtils.isEmpty(currentQuery) ? "No videos found" : "No matching folders");
+            emptyView.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
+        } else {
+            emptyView.setVisibility(View.GONE);
+            recyclerView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void openFolder(String folderName) {
+        currentMode = MODE_VIDEOS;
+        currentFolder = folderName;
+
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(folderName);
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+
+        showVideoList();
+    }
+
+    private void showVideoList() {
+        filteredVideos.clear();
+
+        List<VideoItem> source;
+        if (currentFolder != null) {
+            source = folderMap.get(currentFolder);
+            if (source == null) source = new ArrayList<>();
+        } else {
+            source = allVideos;
+        }
+
+        if (TextUtils.isEmpty(currentQuery)) {
+            filteredVideos.addAll(source);
+        } else {
+            String query = currentQuery.toLowerCase();
+            for (VideoItem item : source) {
+                if (item.title != null && item.title.toLowerCase().contains(query)) {
+                    filteredVideos.add(item);
+                }
+            }
+        }
+
+        videoAdapter.setItems(filteredVideos);
+        recyclerView.setAdapter(videoAdapter);
+
+        if (filteredVideos.isEmpty()) {
+            emptyView.setText(TextUtils.isEmpty(currentQuery) ?
+                    "No videos in this folder" : "No matching videos");
+            emptyView.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
+        } else {
+            emptyView.setVisibility(View.GONE);
+            recyclerView.setVisibility(View.VISIBLE);
+        }
+
+        if (getSupportActionBar() != null) {
+            String subtitle = filteredVideos.size() + " videos";
+            if (showHidden) subtitle += " (incl. hidden)";
+            getSupportActionBar().setSubtitle(subtitle);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (currentMode == MODE_VIDEOS) {
+            showFolderList();
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        if (currentMode == MODE_VIDEOS) {
+            showFolderList();
+            return true;
+        }
+        return super.onSupportNavigateUp();
+    }
+
+    // --- MediaStore loading ---
 
     private void loadFromMediaStore() {
         Uri collection;
@@ -261,6 +399,8 @@ public class MediaLibraryActivity extends AppCompatActivity {
         }
     }
 
+    // --- File system scanning for .nomedia ---
+
     private boolean canScanFileSystem() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             return Environment.isExternalStorageManager();
@@ -278,7 +418,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
     }
 
     private void scanFileSystem() {
-        // Collect existing paths to avoid duplicates
         Set<String> existingPaths = new HashSet<>();
         for (VideoItem item : allVideos) {
             if (item.path != null) {
@@ -295,18 +434,11 @@ public class MediaLibraryActivity extends AppCompatActivity {
     private void scanDirectory(File dir, Set<String> existingPaths) {
         if (dir == null || !dir.exists() || !dir.isDirectory()) return;
 
-        // Skip certain system directories
-        String name = dir.getName();
-        if (name.startsWith(".") && !name.equals(".nomedia")) {
-            // Skip hidden dirs except we want to scan THROUGH .nomedia
-        }
-
         File[] files = dir.listFiles();
         if (files == null) return;
 
         for (File file : files) {
             if (file.isDirectory()) {
-                // Recurse into all directories, including those with .nomedia
                 if (!file.getName().equals("Android")) {
                     scanDirectory(file, existingPaths);
                 }
@@ -316,7 +448,7 @@ public class MediaLibraryActivity extends AppCompatActivity {
                     existingPaths.add(path);
 
                     VideoItem item = new VideoItem();
-                    item.id = -1; // Not in MediaStore
+                    item.id = -1;
                     item.title = file.getName();
                     item.path = path;
                     item.size = file.length();
@@ -325,7 +457,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
                             file.getParentFile().getName() : "Unknown";
                     item.mimeType = getMimeType(file.getName());
 
-                    // Try to get duration from metadata
                     try (MediaMetadataRetriever retriever = new MediaMetadataRetriever()) {
                         retriever.setDataSource(path);
                         String dur = retriever.extractMetadata(
@@ -342,7 +473,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
                             item.height = Integer.parseInt(h);
                         }
                     } catch (Exception e) {
-                        // Skip files that can't be read
                         continue;
                     }
 
@@ -384,69 +514,16 @@ public class MediaLibraryActivity extends AppCompatActivity {
         return "video/*";
     }
 
-    private void applyFilter() {
-        filteredVideos.clear();
-
-        List<VideoItem> source;
-        if (currentFolder != null) {
-            source = folderMap.get(currentFolder);
-            if (source == null) source = new ArrayList<>();
-        } else {
-            source = allVideos;
-        }
-
-        if (TextUtils.isEmpty(currentQuery)) {
-            filteredVideos.addAll(source);
-        } else {
-            String query = currentQuery.toLowerCase();
-            for (VideoItem item : source) {
-                if (item.title != null && item.title.toLowerCase().contains(query)) {
-                    filteredVideos.add(item);
-                }
-            }
-        }
-
-        adapter.setItems(filteredVideos);
-
-        if (filteredVideos.isEmpty()) {
-            emptyView.setText(TextUtils.isEmpty(currentQuery) ?
-                    "No videos found" : "No matching videos");
-            emptyView.setVisibility(View.VISIBLE);
-            recyclerView.setVisibility(View.GONE);
-        } else {
-            emptyView.setVisibility(View.GONE);
-            recyclerView.setVisibility(View.VISIBLE);
-        }
-
-        updateSubtitle();
-    }
-
-    private void updateSubtitle() {
-        String text;
-        if (currentFolder != null) {
-            text = currentFolder + " · " + filteredVideos.size() + " videos";
-        } else {
-            text = filteredVideos.size() + " videos";
-        }
-        if (showHidden) {
-            text += " (incl. hidden)";
-        }
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setSubtitle(text);
-        }
-    }
+    // --- Playback ---
 
     private void playVideo(VideoItem item) {
         Uri videoUri;
         if (item.id > 0) {
-            // From MediaStore
             videoUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, item.id);
         } else {
-            // From file system scan
             videoUri = Uri.fromFile(new File(item.path));
         }
 
-        // Skip the first-run onboarding overlay in PlayerActivity
         Prefs prefs = new Prefs(this);
         prefs.markFirstRun();
 
@@ -484,6 +561,8 @@ public class MediaLibraryActivity extends AppCompatActivity {
                 .show();
     }
 
+    // --- Menu ---
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.media_library, menu);
@@ -502,7 +581,11 @@ public class MediaLibraryActivity extends AppCompatActivity {
             @Override
             public boolean onQueryTextChange(String newText) {
                 currentQuery = newText;
-                applyFilter();
+                if (currentMode == MODE_FOLDERS) {
+                    showFolderList();
+                } else {
+                    showVideoList();
+                }
                 return true;
             }
         });
@@ -516,28 +599,27 @@ public class MediaLibraryActivity extends AppCompatActivity {
         if (id == R.id.action_sort) {
             showSortDialog();
             return true;
-        } else if (id == R.id.action_folders) {
-            toggleFolderFilter();
-            return true;
         } else if (id == R.id.action_show_hidden) {
             toggleShowHidden();
             return true;
+        } else if (id == android.R.id.home) {
+            if (currentMode == MODE_VIDEOS) {
+                showFolderList();
+                return true;
+            }
         }
         return super.onOptionsItemSelected(item);
     }
 
     private void toggleShowHidden() {
         if (showHidden) {
-            // Turn off
             showHidden = false;
             loadVideos();
         } else {
-            // Turn on - check permission first
             if (canScanFileSystem()) {
                 showHidden = true;
                 loadVideos();
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                // Need to request MANAGE_EXTERNAL_STORAGE
                 new MaterialAlertDialogBuilder(this)
                         .setTitle("Storage access required")
                         .setMessage("To scan hidden videos (.nomedia folders), the app needs full storage access. Grant in next screen.")
@@ -545,7 +627,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
                         .setNegativeButton(android.R.string.cancel, null)
                         .show();
             } else {
-                // Pre-R: should already have READ_EXTERNAL_STORAGE
                 showHidden = true;
                 loadVideos();
             }
@@ -569,71 +650,6 @@ public class MediaLibraryActivity extends AppCompatActivity {
                     loadVideos();
                 })
                 .show();
-    }
-
-    private void toggleFolderFilter() {
-        if (folderFilterBar.getVisibility() == View.VISIBLE) {
-            folderFilterBar.setVisibility(View.GONE);
-            currentFolder = null;
-            applyFilter();
-        } else {
-            folderFilterBar.setVisibility(View.VISIBLE);
-            setupFolderChips();
-        }
-    }
-
-    private void setupFolderChips() {
-        chipGroup.removeAllViews();
-
-        Chip allChip = new Chip(this);
-        allChip.setText("All");
-        allChip.setCheckable(true);
-        allChip.setChecked(currentFolder == null);
-        allChip.setOnClickListener(v -> {
-            currentFolder = null;
-            updateChipSelection();
-            applyFilter();
-        });
-        chipGroup.addView(allChip);
-
-        List<String> folders = new ArrayList<>(folderMap.keySet());
-        Collections.sort(folders, String.CASE_INSENSITIVE_ORDER);
-
-        for (String folder : folders) {
-            Chip chip = new Chip(this);
-            chip.setText(folder + " (" + folderMap.get(folder).size() + ")");
-            chip.setCheckable(true);
-            chip.setChecked(folder.equals(currentFolder));
-            chip.setOnClickListener(v -> {
-                currentFolder = folder;
-                updateChipSelection();
-                applyFilter();
-            });
-            chipGroup.addView(chip);
-        }
-    }
-
-    private void updateChipSelection() {
-        for (int i = 0; i < chipGroup.getChildCount(); i++) {
-            View child = chipGroup.getChildAt(i);
-            if (child instanceof Chip) {
-                Chip chip = (Chip) child;
-                if (i == 0) {
-                    chip.setChecked(currentFolder == null);
-                } else {
-                    String folderName = extractFolderName(chip.getText().toString());
-                    chip.setChecked(folderName.equals(currentFolder));
-                }
-            }
-        }
-    }
-
-    private String extractFolderName(String chipText) {
-        int idx = chipText.lastIndexOf(" (");
-        if (idx > 0) {
-            return chipText.substring(0, idx);
-        }
-        return chipText;
     }
 
     @Override
