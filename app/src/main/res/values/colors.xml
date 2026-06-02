@@ -5,6 +5,15 @@
     <color name="green">#3DDC84</color>
     <color name="shortcut_background">#F5F5F5</color>
 
+    <!-- Media Library -->
+    <color name="media_library_background">#FF121212</color>
+    <color name="media_library_surface">#FF1E1E1E</color>
+    <color name="media_library_text_primary">#FFFFFFFF</color>
+    <color name="media_library_text_secondary">#FFB0B0B0</color>
+    <color name="media_library_thumbnail_bg">#FF2A2A2A</color>
+    <color name="media_library_chip_selected">#FF3DDC84</color>
+    <color name="media_library_chip_bg">#FF2A2A2A</color>
+
     <color name="ui_controls_background">#98000000</color>
     <color name="exo_bottom_bar_background" tools:keep="@color/exo_bottom_bar_background">@color/ui_controls_background</color>
     <color name="exo_black_opacity_70" tools:keep="@color/exo_black_opacity_70">@color/ui_controls_background</color>
