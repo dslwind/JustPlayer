@@ -10,6 +10,11 @@
         app:actionViewClass="androidx.appcompat.widget.SearchView" />
 
     <item
+        android:id="@+id/action_show_hidden"
+        android:title="Show hidden"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_folders"
         android:title="Folders"
         android:icon="@drawable/ic_folder_open_24dp"

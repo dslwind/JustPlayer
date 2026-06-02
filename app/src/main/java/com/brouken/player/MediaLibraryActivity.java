@@ -5,10 +5,13 @@ import android.content.ContentUris;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -27,15 +30,24 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class MediaLibraryActivity extends AppCompatActivity {
 
     private static final int REQUEST_PERMISSION = 100;
+    private static final int REQUEST_MANAGE_STORAGE = 101;
+
+    private static final String[] VIDEO_EXTENSIONS = {
+            ".3gp", ".avi", ".flv", ".m4v", ".mkv", ".mov", ".mp4", ".mpd",
+            ".mpe", ".mpeg", ".mpg", ".mts", ".ts", ".webm", ".wmv"
+    };
 
     private RecyclerView recyclerView;
     private MediaLibraryAdapter adapter;
@@ -52,6 +64,9 @@ public class MediaLibraryActivity extends AppCompatActivity {
     private String currentQuery = "";
     private SortOrder sortOrder = SortOrder.DATE_DESC;
     private boolean loaded = false;
+    private boolean showHidden = false;
+
+    private MenuItem hiddenToggle;
 
     enum SortOrder {
         DATE_DESC("Date (newest)", MediaStore.MediaColumns.DATE_ADDED + " DESC"),
@@ -135,10 +150,42 @@ public class MediaLibraryActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_MANAGE_STORAGE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+                showHidden = true;
+                loadVideos();
+            }
+        }
+    }
+
     private void loadVideos() {
         allVideos.clear();
         folderMap.clear();
 
+        // 1. Load from MediaStore (respects .nomedia)
+        loadFromMediaStore();
+
+        // 2. If showHidden enabled, also scan file system
+        if (showHidden && canScanFileSystem()) {
+            scanFileSystem();
+        }
+
+        loaded = true;
+
+        setupFolderChips();
+        folderFilterBar.setVisibility(View.VISIBLE);
+
+        applyFilter();
+
+        if (hiddenToggle != null) {
+            hiddenToggle.setTitle(showHidden ? "Hide hidden" : "Show hidden");
+        }
+    }
+
+    private void loadFromMediaStore() {
         Uri collection;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
@@ -202,14 +249,129 @@ public class MediaLibraryActivity extends AppCompatActivity {
                 }
             }
         }
+    }
 
-        loaded = true;
+    private boolean canScanFileSystem() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED;
+    }
 
-        // Show folder chips by default
-        setupFolderChips();
-        folderFilterBar.setVisibility(View.VISIBLE);
+    private void requestStorageManagerPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, REQUEST_MANAGE_STORAGE);
+        }
+    }
 
-        applyFilter();
+    private void scanFileSystem() {
+        // Collect existing paths to avoid duplicates
+        Set<String> existingPaths = new HashSet<>();
+        for (VideoItem item : allVideos) {
+            if (item.path != null) {
+                existingPaths.add(item.path);
+            }
+        }
+
+        File storageRoot = Environment.getExternalStorageDirectory();
+        if (storageRoot != null && storageRoot.exists()) {
+            scanDirectory(storageRoot, existingPaths);
+        }
+    }
+
+    private void scanDirectory(File dir, Set<String> existingPaths) {
+        if (dir == null || !dir.exists() || !dir.isDirectory()) return;
+
+        // Skip certain system directories
+        String name = dir.getName();
+        if (name.startsWith(".") && !name.equals(".nomedia")) {
+            // Skip hidden dirs except we want to scan THROUGH .nomedia
+        }
+
+        File[] files = dir.listFiles();
+        if (files == null) return;
+
+        for (File file : files) {
+            if (file.isDirectory()) {
+                // Recurse into all directories, including those with .nomedia
+                if (!file.getName().equals("Android")) {
+                    scanDirectory(file, existingPaths);
+                }
+            } else if (file.isFile() && isVideoFile(file.getName())) {
+                String path = file.getAbsolutePath();
+                if (!existingPaths.contains(path)) {
+                    existingPaths.add(path);
+
+                    VideoItem item = new VideoItem();
+                    item.id = -1; // Not in MediaStore
+                    item.title = file.getName();
+                    item.path = path;
+                    item.size = file.length();
+                    item.dateAdded = file.lastModified() / 1000;
+                    item.bucketName = file.getParentFile() != null ?
+                            file.getParentFile().getName() : "Unknown";
+                    item.mimeType = getMimeType(file.getName());
+
+                    // Try to get duration from metadata
+                    try (MediaMetadataRetriever retriever = new MediaMetadataRetriever()) {
+                        retriever.setDataSource(path);
+                        String dur = retriever.extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_DURATION);
+                        if (dur != null) {
+                            item.duration = Long.parseLong(dur);
+                        }
+                        String w = retriever.extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
+                        String h = retriever.extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
+                        if (w != null && h != null) {
+                            item.width = Integer.parseInt(w);
+                            item.height = Integer.parseInt(h);
+                        }
+                    } catch (Exception e) {
+                        // Skip files that can't be read
+                        continue;
+                    }
+
+                    if (item.duration <= 0) continue;
+
+                    allVideos.add(item);
+
+                    List<VideoItem> folderList = folderMap.get(item.bucketName);
+                    if (folderList == null) {
+                        folderList = new ArrayList<>();
+                        folderMap.put(item.bucketName, folderList);
+                    }
+                    folderList.add(item);
+                }
+            }
+        }
+    }
+
+    private boolean isVideoFile(String name) {
+        String lower = name.toLowerCase();
+        for (String ext : VIDEO_EXTENSIONS) {
+            if (lower.endsWith(ext)) return true;
+        }
+        return false;
+    }
+
+    private String getMimeType(String name) {
+        String lower = name.toLowerCase();
+        if (lower.endsWith(".mp4")) return "video/mp4";
+        if (lower.endsWith(".mkv")) return "video/x-matroska";
+        if (lower.endsWith(".webm")) return "video/webm";
+        if (lower.endsWith(".avi")) return "video/avi";
+        if (lower.endsWith(".mov")) return "video/quicktime";
+        if (lower.endsWith(".3gp")) return "video/3gpp";
+        if (lower.endsWith(".flv")) return "video/x-flv";
+        if (lower.endsWith(".ts") || lower.endsWith(".mts")) return "video/mp2t";
+        if (lower.endsWith(".wmv")) return "video/x-ms-wmv";
+        if (lower.endsWith(".m4v")) return "video/mp4";
+        return "video/*";
     }
 
     private void applyFilter() {
@@ -256,13 +418,23 @@ public class MediaLibraryActivity extends AppCompatActivity {
         } else {
             text = filteredVideos.size() + " videos";
         }
+        if (showHidden) {
+            text += " (incl. hidden)";
+        }
         if (getSupportActionBar() != null) {
             getSupportActionBar().setSubtitle(text);
         }
     }
 
     private void playVideo(VideoItem item) {
-        Uri videoUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, item.id);
+        Uri videoUri;
+        if (item.id > 0) {
+            // From MediaStore
+            videoUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, item.id);
+        } else {
+            // From file system scan
+            videoUri = Uri.fromFile(new File(item.path));
+        }
 
         // Skip the first-run onboarding overlay in PlayerActivity
         Prefs prefs = new Prefs(this);
@@ -291,6 +463,9 @@ public class MediaLibraryActivity extends AppCompatActivity {
         if (item.path != null) {
             info.append("Path: ").append(item.path);
         }
+        if (item.id < 0) {
+            info.append("\n⚠ Hidden file (in .nomedia folder)");
+        }
 
         new android.app.AlertDialog.Builder(this)
                 .setTitle(item.title)
@@ -302,6 +477,8 @@ public class MediaLibraryActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.media_library, menu);
+
+        hiddenToggle = menu.findItem(R.id.action_show_hidden);
 
         MenuItem searchItem = menu.findItem(R.id.action_search);
         SearchView searchView = (SearchView) searchItem.getActionView();
@@ -332,8 +509,37 @@ public class MediaLibraryActivity extends AppCompatActivity {
         } else if (id == R.id.action_folders) {
             toggleFolderFilter();
             return true;
+        } else if (id == R.id.action_show_hidden) {
+            toggleShowHidden();
+            return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void toggleShowHidden() {
+        if (showHidden) {
+            // Turn off
+            showHidden = false;
+            loadVideos();
+        } else {
+            // Turn on - check permission first
+            if (canScanFileSystem()) {
+                showHidden = true;
+                loadVideos();
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // Need to request MANAGE_EXTERNAL_STORAGE
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("Storage access required")
+                        .setMessage("To scan hidden videos (.nomedia folders), the app needs full storage access. Grant in next screen.")
+                        .setPositiveButton(android.R.string.ok, (d, w) -> requestStorageManagerPermission())
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+            } else {
+                // Pre-R: should already have READ_EXTERNAL_STORAGE
+                showHidden = true;
+                loadVideos();
+            }
+        }
     }
 
     private void showSortDialog() {
