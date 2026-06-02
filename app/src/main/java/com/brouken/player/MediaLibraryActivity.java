@@ -264,6 +264,10 @@ public class MediaLibraryActivity extends AppCompatActivity {
     private void playVideo(VideoItem item) {
         Uri videoUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, item.id);
 
+        // Skip the first-run onboarding overlay in PlayerActivity
+        Prefs prefs = new Prefs(this);
+        prefs.markFirstRun();
+
         Intent intent = new Intent(this, PlayerActivity.class);
         intent.setAction(Intent.ACTION_VIEW);
         intent.setDataAndType(videoUri, item.mimeType != null ? item.mimeType : "video/*");
