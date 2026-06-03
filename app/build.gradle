@@ -5,6 +5,20 @@ plugins {
 android {
     namespace 'com.dslwind.justplayer'
     compileSdk = 36
+
+    signingConfigs {
+        release {
+            def ksFile = project.findProperty("android.injected.signing.store.file")
+            if (ksFile) {
+                storeFile file(ksFile)
+                storePassword project.findProperty("android.injected.signing.store.password")
+                keyAlias project.findProperty("android.injected.signing.key.alias")
+                keyPassword project.findProperty("android.injected.signing.key.password")
+                storeType "PKCS12"
+            }
+        }
+    }
+
     ndkVersion '29.0.14206865'
 
     defaultConfig {
@@ -27,6 +41,9 @@ android {
     }
     buildTypes {
         release {
+            if (project.findProperty("android.injected.signing.store.file")) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             //proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
