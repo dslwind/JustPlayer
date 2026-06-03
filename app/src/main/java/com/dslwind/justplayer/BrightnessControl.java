@@ -1,4 +1,4 @@
-package com.brouken.player;
+package com.dslwind.justplayer;
 
 import android.app.Activity;
 import android.view.WindowManager;

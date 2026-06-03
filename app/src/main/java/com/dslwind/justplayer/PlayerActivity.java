@@ -1,4 +1,4 @@
-package com.brouken.player;
+package com.dslwind.justplayer;
 
 import static android.content.pm.PackageManager.FEATURE_EXPANDED_PICTURE_IN_PICTURE;
 
@@ -95,8 +95,8 @@ import androidx.media3.ui.PlayerView;
 import androidx.media3.ui.SubtitleView;
 import androidx.media3.ui.TimeBar;
 
-import com.brouken.player.dtpv.DoubleTapPlayerView;
-import com.brouken.player.dtpv.youtube.YouTubeOverlay;
+import com.dslwind.justplayer.dtpv.DoubleTapPlayerView;
+import com.dslwind.justplayer.dtpv.youtube.YouTubeOverlay;
 import com.getkeepsafe.taptargetview.TapTarget;
 import com.getkeepsafe.taptargetview.TapTargetView;
 import com.google.android.material.snackbar.Snackbar;
@@ -251,7 +251,7 @@ public class PlayerActivity extends Activity {
         final String action = launchIntent.getAction();
         final String type = launchIntent.getType();
 
-        if ("com.brouken.player.action.SHORTCUT_VIDEOS".equals(action)) {
+        if ("com.dslwind.justplayer.action.SHORTCUT_VIDEOS".equals(action)) {
             openFile(Utils.getMoviesFolderUri());
         } else if (Intent.ACTION_SEND.equals(action) && "text/plain".equals(type)) {
             String text = launchIntent.getStringExtra(Intent.EXTRA_TEXT);

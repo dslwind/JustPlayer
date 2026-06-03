@@ -1,4 +1,4 @@
-package com.brouken.player;
+package com.dslwind.justplayer;
 
 import android.net.Uri;
 import android.widget.Toast;

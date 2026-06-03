@@ -3,17 +3,17 @@ plugins {
 }
 
 android {
-    namespace 'com.brouken.player'
+    namespace 'com.dslwind.justplayer'
     compileSdk = 36
     ndkVersion '29.0.14206865'
 
     defaultConfig {
         def abiFilter = project.findProperty("abiFilter")
-        applicationId "com.brouken.player"
+        applicationId "com.dslwind.justplayer"
         minSdkVersion 23
         targetSdkVersion 36
         versionCode 212
-        versionName "0.${versionCode}"
+        versionName "0.${versionCode}-patch"
         if (abiFilter) {
             def abiCodeMap = ["x86": 1, "x86_64": 2, "armeabi-v7a": 3, "arm64-v8a": 4]
             versionCode = versionCode * 10 + abiCodeMap[abiFilter]

@@ -1,4 +1,4 @@
-package com.brouken.player.dtpv;
+package com.dslwind.justplayer.dtpv;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -11,8 +11,8 @@ import android.view.View;
 
 import androidx.core.view.GestureDetectorCompat;
 
-import com.brouken.player.CustomPlayerView;
-import com.brouken.player.R;
+import com.dslwind.justplayer.CustomPlayerView;
+import com.dslwind.justplayer.R;
 
 /**
  * Custom player class for Double-Tapping listening

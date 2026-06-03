@@ -1,4 +1,4 @@
-package com.brouken.player.dtpv.youtube.views;
+package com.dslwind.justplayer.dtpv.youtube.views;
 
 import android.animation.Animator;
 import android.animation.ValueAnimator;
@@ -13,7 +13,7 @@ import android.view.View;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
-import com.brouken.player.R;
+import com.dslwind.justplayer.R;
 
 /**
  * View class

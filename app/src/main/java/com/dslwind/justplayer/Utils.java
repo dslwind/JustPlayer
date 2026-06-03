@@ -1,4 +1,4 @@
-package com.brouken.player;
+package com.dslwind.justplayer;
 
 import static android.content.Context.UI_MODE_SERVICE;
 

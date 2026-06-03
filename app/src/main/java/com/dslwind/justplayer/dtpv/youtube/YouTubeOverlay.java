@@ -1,4 +1,4 @@
-package com.brouken.player.dtpv.youtube;
+package com.dslwind.justplayer.dtpv.youtube;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -21,13 +21,13 @@ import androidx.core.widget.TextViewCompat;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.SeekParameters;
 
-import com.brouken.player.PlayerActivity;
-import com.brouken.player.R;
-import com.brouken.player.dtpv.DoubleTapPlayerView;
-import com.brouken.player.dtpv.PlayerDoubleTapListener;
-import com.brouken.player.dtpv.SeekListener;
-import com.brouken.player.dtpv.youtube.views.CircleClipTapView;
-import com.brouken.player.dtpv.youtube.views.SecondsView;
+import com.dslwind.justplayer.PlayerActivity;
+import com.dslwind.justplayer.R;
+import com.dslwind.justplayer.dtpv.DoubleTapPlayerView;
+import com.dslwind.justplayer.dtpv.PlayerDoubleTapListener;
+import com.dslwind.justplayer.dtpv.SeekListener;
+import com.dslwind.justplayer.dtpv.youtube.views.CircleClipTapView;
+import com.dslwind.justplayer.dtpv.youtube.views.SecondsView;
 
 /**
  * Overlay for [DoubleTapPlayerView] to create a similar UI/UX experience like the official

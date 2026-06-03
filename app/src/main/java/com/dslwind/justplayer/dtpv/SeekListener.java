@@ -1,4 +1,4 @@
-package com.brouken.player.dtpv;
+package com.dslwind.justplayer.dtpv;
 
 public interface SeekListener {
     /**
