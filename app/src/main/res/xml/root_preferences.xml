@@ -44,6 +44,13 @@
             app:summary="@string/pref_repeat_toggle_summary"
             app:title="@string/pref_repeat_toggle" />
 
+        <SwitchPreferenceCompat
+            app:key="autoPlayNext"
+            app:defaultValue="true"
+            app:summaryOn="@string/pref_auto_play_next_on"
+            app:summaryOff="@string/pref_auto_play_next_off"
+            app:title="@string/pref_auto_play_next" />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/pref_subtitle_header">

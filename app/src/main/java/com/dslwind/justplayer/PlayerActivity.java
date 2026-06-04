@@ -1576,6 +1576,8 @@ public class PlayerActivity extends Activity {
                 playbackFinished = true;
                 if (apiAccess) {
                     finish();
+                } else if (mPrefs.autoPlayNext && nextUri != null) {
+                    skipToNext();
                 }
             }
         }

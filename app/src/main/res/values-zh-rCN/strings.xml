@@ -27,6 +27,9 @@
     <string name="pref_title">设置</string>
     <string name="pref_repeat_toggle">重复切换</string>
     <string name="pref_repeat_toggle_summary">允许无限循环视频的额外控制（需要重新启动应用程序）</string>
+    <string name="pref_auto_play_next">自动播放下一个</string>
+    <string name="pref_auto_play_next_on">当前视频结束后自动播放下一个</string>
+    <string name="pref_auto_play_next_off">视频结束时显示下一个按钮</string>
     <string name="shortcut_videos">视频</string>
     <string name="button_open">打开</string>
     <string name="button_crop">调整大小</string>
