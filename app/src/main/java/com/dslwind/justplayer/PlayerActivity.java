@@ -2134,8 +2134,8 @@ public class PlayerActivity extends Activity {
 
     Uri findNext() {
         // Try MediaStore first — no SAF scope needed for external storage files
-        Uri next = findNextViaMediaStore();
-        if (next != null) return next;
+        Uri nextFromStore = findNextViaMediaStore();
+        if (nextFromStore != null) return nextFromStore;
 
         // Fallback to SAF scope-based search
         if (mPrefs.scopeUri != null || isTvBox) {
