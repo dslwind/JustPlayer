@@ -15,6 +15,9 @@ import android.app.RemoteAction;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.database.Cursor;
+import android.provider.MediaStore;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -2041,8 +2044,100 @@ public class PlayerActivity extends Activity {
         }
     }
 
+    /**
+     * Find next video using MediaStore — works without SAF scope for files on external storage.
+     */
+    Uri findNextViaMediaStore() {
+        try {
+            final Uri mediaUri = mPrefs.mediaUri;
+            if (mediaUri == null) return null;
+
+            // Get the current video's _ID, DISPLAY_NAME, and BUCKET_ID
+            Long currentId = null;
+            String currentName = null;
+            String bucketId = null;
+
+            // Try querying by content URI (MediaStore content:// URIs have the ID appended)
+            if (ContentResolver.SCHEME_CONTENT.equals(mediaUri.getScheme())
+                    && mediaUri.getHost() != null
+                    && mediaUri.getHost().startsWith("media")) {
+                // Extract ID from URI path
+                List<String> segments = mediaUri.getPathSegments();
+                for (int i = 0; i < segments.size(); i++) {
+                    if ("video".equals(segments.get(i)) && i + 1 < segments.size()) {
+                        try {
+                            currentId = Long.parseLong(segments.get(i + 1));
+                        } catch (NumberFormatException ignored) {}
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: query MediaStore by _DATA (file path) for file:// URIs
+            if (currentId == null && ContentResolver.SCHEME_FILE.equals(mediaUri.getScheme())) {
+                String filePath = mediaUri.getPath();
+                if (filePath != null) {
+                    try (Cursor c = getContentResolver().query(
+                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                            new String[]{MediaStore.Video.Media._ID},
+                            MediaStore.Video.Media.DATA + "=?",
+                            new String[]{filePath}, null)) {
+                        if (c != null && c.moveToFirst()) {
+                            currentId = c.getLong(0);
+                        }
+                    }
+                }
+            }
+
+            if (currentId == null) return null;
+
+            // Get current video name and bucket
+            try (Cursor c = getContentResolver().query(
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    new String[]{MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.BUCKET_ID},
+                    MediaStore.Video.Media._ID + "=?",
+                    new String[]{String.valueOf(currentId)}, null)) {
+                if (c != null && c.moveToFirst()) {
+                    currentName = c.getString(0);
+                    bucketId = c.getString(1);
+                }
+            }
+
+            if (currentName == null || bucketId == null) return null;
+
+            // Query all videos in the same bucket, sorted by display name
+            try (Cursor c = getContentResolver().query(
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    new String[]{MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME},
+                    MediaStore.Video.Media.BUCKET_ID + "=?",
+                    new String[]{bucketId},
+                    MediaStore.Video.Media.DISPLAY_NAME + " ASC")) {
+
+                if (c == null) return null;
+
+                boolean foundCurrent = false;
+                while (c.moveToNext()) {
+                    String name = c.getString(1);
+                    if (name.equals(currentName)) {
+                        foundCurrent = true;
+                    } else if (foundCurrent) {
+                        long nextId = c.getLong(0);
+                        return ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, nextId);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     Uri findNext() {
-        // TODO: Unify with searchSubtitles()
+        // Try MediaStore first — no SAF scope needed for external storage files
+        Uri next = findNextViaMediaStore();
+        if (next != null) return next;
+
+        // Fallback to SAF scope-based search
         if (mPrefs.scopeUri != null || isTvBox) {
             DocumentFile video = null;
             File videoRaw = null;
