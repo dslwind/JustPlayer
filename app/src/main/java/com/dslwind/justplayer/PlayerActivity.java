@@ -206,7 +206,6 @@ public class PlayerActivity extends Activity {
     List<MediaItem.SubtitleConfiguration> apiSubs = new ArrayList<>();
     boolean intentReturnResult;
     boolean playbackFinished;
-    boolean skipToNextOnReady;
 
     DisplayManager displayManager;
     DisplayManager.DisplayListener displayListener;
@@ -1158,11 +1157,6 @@ public class PlayerActivity extends Activity {
                     e.printStackTrace();
                 }
             }
-            // If playback was finished and auto-play is on, try to skip to next after scope is set
-            if (resultCode == RESULT_OK && playbackFinished && mPrefs.autoPlayNext) {
-                // Will be handled after initializePlayer() below — set a flag
-                skipToNextOnReady = true;
-            }
         } else if (requestCode == REQUEST_SETTINGS) {
             mPrefs.loadUserPreferences();
             updateSubtitleStyle(this);
@@ -1360,15 +1354,10 @@ public class PlayerActivity extends Activity {
                     nextUriThread.interrupt();
                 }
                 nextUri = null;
-                final boolean shouldSkipOnReady = skipToNextOnReady;
-                skipToNextOnReady = false;
                 nextUriThread = new Thread(() -> {
                     Uri uri = findNext();
                     if (!Thread.currentThread().isInterrupted()) {
                         nextUri = uri;
-                        if (shouldSkipOnReady && uri != null) {
-                            runOnUiThread(() -> skipToNext());
-                        }
                     }
                 });
                 nextUriThread.start();
@@ -1590,13 +1579,6 @@ public class PlayerActivity extends Activity {
                 playbackFinished = true;
                 if (apiAccess) {
                     finish();
-                } else if (mPrefs.autoPlayNext) {
-                    if (nextUri != null) {
-                        skipToNext();
-                    } else if (mPrefs.askScope && !isTvBox) {
-                        // Auto-play enabled but no folder scope granted yet — ask for it
-                        askForScope(false, true);
-                    }
                 }
             }
         }
