@@ -2029,6 +2029,33 @@ public class PlayerActivity extends Activity {
     }
 
     /**
+     * Extract display name from various URI formats.
+     * Handles: file://, content://media, content://externalstorage.documents, content://providers.media.documents
+     */
+    private String getDisplayNameFromUri(Uri uri) {
+        if (uri == null) return null;
+
+        // Try DocumentFile API first (works for most content:// URIs)
+        try {
+            DocumentFile doc = DocumentFile.fromSingleUri(this, uri);
+            if (doc != null) {
+                String name = doc.getName();
+                if (name != null && !name.isEmpty()) return name;
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback: extract from URI path
+        String path = uri.getPath();
+        if (path != null) {
+            int lastSlash = path.lastIndexOf('/');
+            if (lastSlash >= 0 && lastSlash < path.length() - 1) {
+                return path.substring(lastSlash + 1);
+            }
+        }
+        return null;
+    }
+
+    /**
      * Find next video using MediaStore — works without SAF scope for files on external storage.
      */
     Uri findNextViaMediaStore() {
@@ -2066,6 +2093,22 @@ public class PlayerActivity extends Activity {
                             new String[]{MediaStore.Video.Media._ID},
                             MediaStore.Video.Media.DATA + "=?",
                             new String[]{filePath}, null)) {
+                        if (c != null && c.moveToFirst()) {
+                            currentId = c.getLong(0);
+                        }
+                    }
+                }
+            }
+
+            // Fallback: query MediaStore by display name for content:// URIs from file managers
+            if (currentId == null) {
+                String displayName = getDisplayNameFromUri(mediaUri);
+                if (displayName != null) {
+                    try (Cursor c = getContentResolver().query(
+                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                            new String[]{MediaStore.Video.Media._ID},
+                            MediaStore.Video.Media.DISPLAY_NAME + "=?",
+                            new String[]{displayName}, null)) {
                         if (c != null && c.moveToFirst()) {
                             currentId = c.getLong(0);
                         }
